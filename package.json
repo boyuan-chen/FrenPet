@@ -1,0 +1,23 @@
+{
+  "name": "frenpet",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Boyuan-Chen/FrenPet.git"
+  },
+  "author": "boyuan.eth",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Boyuan-Chen/FrenPet/issues"
+  },
+  "homepage": "https://github.com/Boyuan-Chen/FrenPet#readme",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "ethers": "5.7.2",
+    "node-fetch": "2.6.1"
+  }
+}
