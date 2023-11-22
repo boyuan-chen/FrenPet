@@ -186,7 +186,9 @@ const main = async () => {
               const updatedScore = ethers.BigNumber.from(updatedPetScore).sub(ethers.BigNumber.from(petScore))
               const formatedScore = ethers.utils.formatUnits(updatedScore, 12)
               console.log(`-> Pet ${petId} won score: ${formatedScore.toString()}`)
-              bot.sendMessage(telegramChatId, `Pet ${petId} won score: ${formatedScore.toString()}`)
+              if (bot) {
+                bot.sendMessage(telegramChatId, `Pet ${petId} won score: ${formatedScore.toString()}`)
+              }
               lastAttachedTimestamp[petId] = now
               break
             } catch (e) {
