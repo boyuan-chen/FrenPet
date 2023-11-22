@@ -1,5 +1,6 @@
 const { ethers, providers, Wallet } = require('ethers')
 const fetch = require('node-fetch')
+const TelegramBot = require('node-telegram-bot-api');
 
 const graphQLNode = 'https://chubby-skate-production.up.railway.app/'
 const contractAddress = '0x0e22B5f3E11944578b37ED04F5312Dfc246f443C'
@@ -60,10 +61,33 @@ const sleep = async (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+const getLeaderboard = async () => {
+  const leaderboardResponse = await fetch(graphQLNode, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query: leaderboardQuery() }),
+  })
+  const leaderboardJson = await leaderboardResponse.json()
+  const leaderboard = leaderboardJson.data.pets
+  return leaderboard
+}
+
 require('dotenv').config()
 const env = process.env
 
 const main = async () => {
+  const telegramToken = env.TELEGRAM_TOKEN
+  const telegramChatId = env.TELEGRAM_CHAT_ID
+  let bot
+  if (telegramToken && telegramChatId) {
+    bot = new TelegramBot(telegramToken, {polling: true});
+    console.log(`Telegram bot started`)
+  }
+
+  const lastAttachedTimestamp = {}
+
   const web3 = new ethers.providers.JsonRpcProvider(env.NODE_URL)
   const wallet = new Wallet(env.PRIVATE_KEY, web3)
 
@@ -85,6 +109,12 @@ const main = async () => {
       console.log(`Error fetching pets: ${e}`)
     }
 
+    if (pets.length === 0) {
+      console.log(`!!! No pets found`)
+      await sleep(5000)
+      continue
+    }
+
     for (let i = 0; i < pets.length; i++) {
       const pet = pets[i]
       const petId = pet.id
@@ -100,19 +130,27 @@ const main = async () => {
         continue
       }
 
+      if (typeof lastAttachedTimestamp[petId] === 'undefined') {
+        lastAttachedTimestamp[petId] = 0
+      }
+      if (lastAttachedTimestamp[petId] + 15 * 60 > now) {
+        console.log(`-> Pet ${petId} already attacked in the last 15 minutes`)
+        continue
+      }
+
       console.log(`Pet ${petId} can attack!`)
 
-      const leaderboardResponse = await fetch(graphQLNode, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: leaderboardQuery() }),
-      })
-      const leaderboardJson = await leaderboardResponse.json()
-      const leaderboard = leaderboardJson.data.pets
+      const leaderboard = await getLeaderboard()
       for (const leaderboardPet of leaderboard) {
         const lastAttacked = leaderboardPet.lastAttacked
+        const leaderboardScore = leaderboardPet.score
+
+        if (ethers.BigNumber.from(leaderboardScore).lte(
+          ethers.BigNumber.from(petScore).mul(ethers.BigNumber.from(15)).div(ethers.BigNumber.from(10))
+        )) {
+          continue
+        }
+
         const status = leaderboardPet.status
         const now = Math.floor(Date.now() / 1000)
         if (lastAttacked + 60 * 60 < now && status === 0) {
@@ -148,6 +186,8 @@ const main = async () => {
               const updatedScore = ethers.BigNumber.from(updatedPetScore).sub(ethers.BigNumber.from(petScore))
               const formatedScore = ethers.utils.formatUnits(updatedScore, 12)
               console.log(`-> Pet ${petId} won score: ${formatedScore.toString()}`)
+              bot.sendMessage(telegramChatId, `Pet ${petId} won score: ${formatedScore.toString()}`)
+              lastAttachedTimestamp[petId] = now
               break
             } catch (e) {
               console.log(`-> !!!Error attacking pet ${leaderboardPet.id}: ${e}`)
