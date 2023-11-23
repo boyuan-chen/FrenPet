@@ -2,7 +2,7 @@ const { ethers, providers, Wallet } = require('ethers')
 const fetch = require('node-fetch')
 const TelegramBot = require('node-telegram-bot-api');
 
-const graphQLNode = 'https://chubby-skate-production.up.railway.app/'
+const graphQLNode = 'https://grateful-sink-production.up.railway.app/'
 const contractAddress = '0x0e22B5f3E11944578b37ED04F5312Dfc246f443C'
 
 const petQuery = (owner) => `
